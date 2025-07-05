@@ -1,0 +1,6 @@
+/mnist_images.zip
+/data_for_inference/
+/mnist_images/
+/mnist_cnn.pt
+
+__pycached__/
