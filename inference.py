@@ -7,14 +7,13 @@ from torchvision.io import decode_image
 import _common
 
 
-
 # TODO: test this
 def _round_preserve_sum(t: torch.Tensor, target_sum: float) -> torch.Tensor:
     """
     Tries fairly rounding tensor values whilst preserving their sum
     """
     if torch.any(t < 0):
-        raise NotImplementedError(f"{t=} contains negative values which are not supported")
+        raise NotImplementedError(f"{t=} contains negative values")
     abs_t = torch.abs(t)
     init_round = torch.round(abs_t)
     diff = target_sum - init_round.sum()
@@ -30,19 +29,20 @@ def _round_preserve_sum(t: torch.Tensor, target_sum: float) -> torch.Tensor:
 
     return init_round
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model-path",
         type=argparse.FileType("rb"),
         default="mnist_cnn.pt",
-        help="Path to the saved model"
+        help="Path to the saved model",
     )
     parser.add_argument(
         "--target-path",
         type=Path,
         default="data_for_inference/",
-        help="Path for the image file(s) to run the model on"
+        help="Path for the image file(s) to run the model on",
     )
     args = parser.parse_args()
 
@@ -53,13 +53,19 @@ def main():
     if args.target_path.is_dir():
         img_paths = list(args.target_path.glob(f"**/*.{exts_pattern}*"))
         if len(img_paths) == 0:
-            parser.error(f"--target-path={args.target_path} results in no files ending with {exts_pattern}")
+            parser.error(
+                f"--target-path={args.target_path} results in no files ending "
+                f"with {exts_pattern}"
+            )
     elif args.target_path.is_file():
         for ext in exts:
             if args.target_path.suffix[1:] == ext:
                 break
         else:
-            parser.error(f"--target-path={args.target_path} does not end with a valid extension {exts_pattern}")
+            parser.error(
+                f"--target-path={args.target_path} does not end with a valid "
+                f"extension {exts_pattern}"
+            )
         img_paths = [args.target_path]
     else:
         assert not args.target_path.exists()  # sanity check
@@ -75,9 +81,15 @@ def main():
             filtered_img_paths.append(img_path)
     if contains_non_png:
         if len(filtered_img_paths) == 0:
-            parser.error(f"--target-path={args.target_path} contains non-png files which aren't supported yet")
+            parser.error(
+                f"--target-path={args.target_path} contains non-png files "
+                "which aren't supported yet"
+            )
         else:
-            print(f"WARN: --target-path={args.target_path} contains non-png files which aren't supported yet and so will not be processed")
+            print(
+                f"WARN: --target-path={args.target_path} contains non-png "
+                "files which aren't supported yet and so will not be processed"
+            )
 
     net = _common.Net()
     net.load_state_dict(model_state_dict)
@@ -109,6 +121,7 @@ def main():
     for digit, count in zip(range(10), counts.tolist()):
         if count != 0:
             print(f"{digit},{count}")
+
 
 if __name__ == "__main__":
     main()

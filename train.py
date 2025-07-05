@@ -1,12 +1,13 @@
 import argparse
+import os
+
+import pandas as pd
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-import os
-import pandas as pd
-from torchvision.io import read_image
 from torch.utils.data import Dataset
+from torchvision.io import read_image
 
 import _common
 
@@ -33,9 +34,6 @@ class CustomImageDataset(Dataset):
             image = self.transform(image)
 
         return image, label
-
-
-
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -182,10 +180,14 @@ def main():
         test_kwargs.update(cuda_kwargs)
 
     train_dataset = CustomImageDataset(
-        annotations_file="mnist_images.csv", img_dir="mnist_images", transform=_common.transform
+        annotations_file="mnist_images.csv",
+        img_dir="mnist_images",
+        transform=_common.transform,
     )
     test_dataset = CustomImageDataset(
-        annotations_file="mnist_images.csv", img_dir="mnist_images", transform=_common.transform
+        annotations_file="mnist_images.csv",
+        img_dir="mnist_images",
+        transform=_common.transform,
     )
 
     train_loader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)

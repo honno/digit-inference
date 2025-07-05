@@ -1,9 +1,10 @@
-from torchvision import transforms
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
+from torchvision import transforms
 
 __all__ = ["Net", "transform"]
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -29,6 +30,7 @@ class Net(nn.Module):
         x = self.fc2(x)
         output = F.log_softmax(x, dim=1)
         return output
+
 
 transform = transforms.Compose(
     [

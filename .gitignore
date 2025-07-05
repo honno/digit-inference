@@ -4,4 +4,4 @@
 /mnist_images/
 /mnist_cnn.pt
 
-__pycached__/
+__pycache__/
