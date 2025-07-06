@@ -1,7 +1,9 @@
 import argparse
+from collections import Counter
 from pathlib import Path
 
 import torch
+from torchvision import transforms
 from torchvision.io import decode_image
 
 import _common
@@ -31,23 +33,26 @@ def _round_preserve_sum(t: torch.Tensor, target_sum: float) -> torch.Tensor:
 
 
 def main():
+    # Define CLI
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model-path",
         type=argparse.FileType("rb"),
         default="mnist_cnn.pt",
-        help="Path to the saved model",
+        help="path to the saved model",
     )
     parser.add_argument(
         "--target-path",
         type=Path,
         default="data_for_inference/",
-        help="Path for the image file(s) to run the model on",
+        help="path for the image file(s) to run the model on",
     )
     args = parser.parse_args()
 
+    # Load model now to short-circuit certain kinds of issues with --model-path
     model_state_dict = torch.load(args.model_path)
 
+    # Find images from --target-path
     exts = ["jpg", "jpeg", "png"]
     exts_pattern = "[" + ",".join(exts) + "]"
     if args.target_path.is_dir():
@@ -70,57 +75,49 @@ def main():
     else:
         assert not args.target_path.exists()  # sanity check
         parser.error(f"--target-path={args.target_path} does not exist")
+    decoded_images = [decode_image(p) for p in img_paths]
 
-    # TODO: support jpegs
-    contains_non_png = False
-    filtered_img_paths = []
-    for img_path in img_paths:
-        if img_path.suffix != ".png":
-            contains_non_png = True
-        else:
-            filtered_img_paths.append(img_path)
-    if contains_non_png:
-        if len(filtered_img_paths) == 0:
-            parser.error(
-                f"--target-path={args.target_path} contains non-png files "
-                "which aren't supported yet"
-            )
-        else:
-            print(
-                f"WARN: --target-path={args.target_path} contains non-png "
-                "files which aren't supported yet and so will not be processed"
-            )
+    # Transform images the same way they were for model training. If necessary,
+    # resize images to the same size beforehand (to what appears the most).
+    dims_counter = Counter(i.shape for i in decoded_images)
+    assert all(s[0] == 3 and len(s) == 3 for s in dims_counter.keys())  # sanity check
+    mode_shape = dims_counter.most_common(1)[0][0]
+    resize_dim = mode_shape[1:]
+    resize_transform = transforms.Resize(resize_dim)
+    transformed_images = []
+    for img in decoded_images:
+        if img.shape != mode_shape:
+            img = resize_transform(img)
+        transformed_img = _common.transform(img)
+        transformed_images.append(transformed_img)
 
+    # Setup and run model
     net = _common.Net()
     net.load_state_dict(model_state_dict)
     net.eval()
-
-    decoded_images = []
-    for p in filtered_img_paths:
-        img = decode_image(p)
-        normalised_img = img.float() / 255.0
-        transformed_img = _common.transform(normalised_img)
-        decoded_images.append(transformed_img)
-
     if len(decoded_images) == 1:
-        batch = decoded_images[0].unsqueeze(0)
+        batch = transformed_images[0].unsqueeze(0)
     else:
-        assert len(decoded_images) > 1  # sanity check
-        batch = torch.stack(decoded_images)
-
+        batch = torch.stack(transformed_images)
     with torch.no_grad():
         outputs = net(batch)
 
+    # Extrapolate model results to counts of digits in images
     image_digit_probabilities = torch.exp(outputs)
     assert image_digit_probabilities.shape[1] == 10  # sanity check
     digit_probability_sums = image_digit_probabilities.sum(dim=0)
-    counts = _round_preserve_sum(digit_probability_sums, batch.shape[0]).int()
-    assert counts.shape == (10,)  # sanity check
-
-    print("digit,count")
-    for digit, count in zip(range(10), counts.tolist()):
+    ordered_counts = _round_preserve_sum(digit_probability_sums, batch.shape[0]).int()
+    assert ordered_counts.shape == (10,)  # sanity check
+    counts_topk = torch.topk(ordered_counts, 10)
+    digit_to_desc_count = {}
+    for digit, count in zip(counts_topk.indices, counts_topk.values):
         if count != 0:
-            print(f"{digit},{count}")
+            digit_to_desc_count[int(digit)] = int(count)
+
+    # Display findings
+    print("digit,count")
+    for digit, count in digit_to_desc_count.items():
+        print(f"{digit},{count}")
 
 
 if __name__ == "__main__":
