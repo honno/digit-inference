@@ -36,45 +36,45 @@ def main():
     # Define CLI
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model-path",
+        "--model",
         type=argparse.FileType("rb"),
         default="mnist_cnn.pt",
         help="path to the saved model",
     )
     parser.add_argument(
-        "--target-path",
+        "--target",
         type=Path,
         default="data_for_inference/",
         help="path for the image file(s) to run the model on",
     )
     args = parser.parse_args()
 
-    # Load model now to short-circuit certain kinds of issues with --model-path
-    model_state_dict = torch.load(args.model_path)
+    # Load model now to short-circuit issues with --model-path
+    model_state_dict = torch.load(args.model)
 
     # Find images from --target-path
     exts = ["jpg", "jpeg", "png"]
     exts_pattern = "[" + ",".join(exts) + "]"
-    if args.target_path.is_dir():
-        img_paths = list(args.target_path.glob(f"**/*.{exts_pattern}*"))
+    if args.target.is_dir():
+        img_paths = list(args.target.glob(f"**/*.{exts_pattern}*"))
         if len(img_paths) == 0:
             parser.error(
-                f"--target-path={args.target_path} results in no files ending "
-                f"with {exts_pattern}"
+                f"--target-path={args.target} results in no files ending with "
+                f"{exts_pattern}"
             )
-    elif args.target_path.is_file():
+    elif args.target.is_file():
         for ext in exts:
-            if args.target_path.suffix[1:] == ext:
+            if args.target.suffix[1:] == ext:
                 break
         else:
             parser.error(
-                f"--target-path={args.target_path} does not end with a valid "
+                f"--target-path={args.target} does not end with a valid "
                 f"extension {exts_pattern}"
             )
-        img_paths = [args.target_path]
+        img_paths = [args.target]
     else:
-        assert not args.target_path.exists()  # sanity check
-        parser.error(f"--target-path={args.target_path} does not exist")
+        assert not args.target.exists()  # sanity check
+        parser.error(f"--target-path={args.target} does not exist")
     decoded_images = [decode_image(p) for p in img_paths]
 
     # Transform images the same way they were for model training. If necessary,
