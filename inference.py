@@ -79,6 +79,7 @@ def main():
 
     # Transform images the same way they were for model training. If necessary,
     # resize images to the same size beforehand (to what appears the most).
+    # XXX: maybe they should be resized to how the model was trained?
     dims_counter = Counter(i.shape for i in decoded_images)
     assert all(s[0] == 3 and len(s) == 3 for s in dims_counter.keys())  # sanity check
     mode_shape = dims_counter.most_common(1)[0][0]
