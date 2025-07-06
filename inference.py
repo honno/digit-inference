@@ -17,19 +17,19 @@ def _round_preserve_sum(t: torch.Tensor, target_sum: float) -> torch.Tensor:
     if torch.any(t < 0):
         raise NotImplementedError(f"{t=} contains negative values")
     abs_t = torch.abs(t)
-    init_round = torch.round(abs_t)
-    diff = target_sum - init_round.sum()
+    round_t = torch.round(abs_t)
+    diff = target_sum - round_t.sum()
     fracs = abs_t - torch.floor(abs_t)
     ranks = torch.where(fracs < 0.5, fracs, 1 - fracs)
     n_adjust = int(abs(diff))
     if diff > 0:
         _, indices = torch.topk(ranks, n_adjust)
-        init_round[indices] += 1
+        round_t[indices] += 1
     elif diff < 0:
         _, indices = torch.topk(ranks, n_adjust)
-        init_round[indices] -= 1
+        round_t[indices] -= 1
 
-    return init_round
+    return round_t
 
 
 def main():
